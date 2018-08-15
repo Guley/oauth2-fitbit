@@ -29,7 +29,7 @@ composer require djchen/oauth2-fitbit
 
 ```php
 use djchen\OAuth2\Client\Provider\Fitbit;
-
+require './vendor/autoload.php';
 $provider = new Fitbit([
     'clientId'          => '{fitbit-oauth2-client-id}',
     'clientSecret'      => '{fitbit-client-secret}',
