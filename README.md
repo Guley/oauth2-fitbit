@@ -80,6 +80,27 @@ if (!isset($_GET['code'])) {
         $resourceOwner = $provider->getResourceOwner($accessToken);
 
         var_export($resourceOwner->toArray());
+        
+        
+        
+        $info=[
+                'getToken'=>$accessToken->getToken(),
+                'getRefreshToken'=>$accessToken->getRefreshToken(),
+                'getExpires'=>$accessToken->getExpires(),
+                'hasExpired'=>$accessToken->hasExpired(),
+                'resourceOwner'=>$resourceOwner->toArray(),
+        ];
+
+        /*Save Token*/
+        $codeFile = $_SERVER['DOCUMENT_ROOT'].'/code.txt';
+        $handleCode = fopen($codeFile, 'w') or die('Cannot open file:  '.$codeFile);
+        fwrite($handleCode,         json_encode(array('timeframe'=>$accessToken->getExpires(),'refresh_token'=>$accessToken->getRefreshToken())));
+
+
+        /*Save Data*/
+        $contentFile = $_SERVER['DOCUMENT_ROOT'].'/content--'.$_GET['code'].'.txt';
+        $handle = fopen($contentFile, 'w') or die('Cannot open file:  '.$contentFile);
+        fwrite($handle, json_encode($info));
 
         // The provider provides a way to get an authenticated API request for
         // the service, using the access token; it returns an object conforming
@@ -121,17 +142,37 @@ $provider = new djchen\OAuth2\Client\Provider\Fitbit([
     'clientSecret'      => '{fitbit-client-secret}',
     'redirectUri'       => 'https://example.com/callback-url'
 ]);
-
-$existingAccessToken = getAccessTokenFromYourDataStore();
-
-if ($existingAccessToken->hasExpired()) {
-    $newAccessToken = $provider->getAccessToken('refresh_token', [
-        'refresh_token' => $existingAccessToken->getRefreshToken()
-    ]);
-
-    // Purge old access token and store new access token to your data store.
+$refresh_token = 0;
+$hasExpired =false;
+$codeFile = $_SERVER['DOCUMENT_ROOT'].'/code.txt';
+$InfoExist =[];
+if(file_exists($codeFile)){
+    $InfoExist = (array) json_decode(file_get_contents($codeFile));
+    $hasExpired = ($InfoExist['timeframe'] <= time())?true:false;
+    $refresh_token = $InfoExist['refresh_token'];
 }
-```
+if ($hasExpired) {
+    $newAccessToken = $provider->getAccessToken('refresh_token', [
+        'refresh_token' => $refresh_token
+    ]);
+   /*Save New info*/
+    $resourceOwner = $provider->getResourceOwner($newAccessToken);
+    $info=[
+                'getToken'=>$newAccessToken->getToken(),
+                'getRefreshToken'=>$newAccessToken->getRefreshToken(),
+                'getExpires'=>$newAccessToken->getExpires(),
+                'hasExpired'=>$newAccessToken->hasExpired(),
+                'resourceOwner'=>$resourceOwner->toArray(),
+        ];
+    $contentFile = $_SERVER['DOCUMENT_ROOT'].'/content--'.$newAccessToken->getToken().'.txt';
+    $handle = fopen($contentFile, 'w') or die('Cannot open file:  '.$contentFile);
+    fwrite($handle, json_encode($info));
+    
+    /*Save New Code And time frame*/
+    $handleCode = fopen($codeFile, 'w') or die('Cannot open file:  '.$codeFile);
+    fwrite($handleCode, json_encode(array('timeframe'=>$newAccessToken->getExpires(),'refresh_token'=>$newAccessToken->getRefreshToken())));
+
+}
 
 ## Testing
 
